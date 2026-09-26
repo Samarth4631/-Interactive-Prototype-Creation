@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FitTrack — Clickable Prototype</title>
+<style>
+  :root{
+    --ink:#1f2023; --paper:#ffffff; --stage:#e9e9ea; --line:#dcdcdc;
+    --muted:#8a8a8e; --accent:#1f2023;
+    padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--stage);color:var(--ink);font-family:-apple-system,Helvetica,Arial,sans-serif;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100%;padding:24px 12px;}
+  .hint{font-size:13px;color:#5a5a5e;margin-bottom:14px;text-align:center;max-width:340px}
+  .hint button{border:none;background:none;color:var(--ink);text-decoration:underline;cursor:pointer;font:inherit;padding:0}
+  .phone{position:relative;width:360px;height:740px;max-width:94vw;max-height:78vh;background:var(--paper);
+    border-radius:34px;border:8px solid #111;overflow:hidden;box-shadow:0 20px 40px rgba(0,0,0,.25)}
+  .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:120px;height:20px;background:#111;
+    border-radius:0 0 14px 14px;z-index:30}
+  .screen{position:absolute;inset:0;background:#fff;transform:translateX(100%);transition:transform .32s cubic-bezier(.4,0,.2,1)}
+  .screen.active{transform:translateX(0)}
+  .screen.left{transform:translateX(-100%)}
+  .screen-inner{position:absolute;inset:0;padding:44px 20px 20px;overflow-y:auto}
+
+  h1,h2,h3{margin:0;font-weight:600}
+  p{margin:0}
+  .muted{color:var(--muted);font-size:13px}
+
+  .btn{display:flex;align-items:center;justify-content:center;min-height:46px;border-radius:9px;font-weight:600;
+    font-size:14px;cursor:pointer;border:1.5px solid transparent;user-select:none}
+  .btn-primary{background:var(--ink);color:#fff}
+  .btn-primary:active{opacity:.8}
+  .btn-outline{background:#fff;color:var(--ink);border-color:var(--ink)}
+
+  /* welcome */
+  #welcome .screen-inner{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px}
+  .logo-mark{width:64px;height:64px;border-radius:14px;background:#eee;border:2px solid var(--ink);margin-bottom:26px}
+  #welcome h1{font-size:24px;margin-bottom:10px}
+  #welcome p{color:#555;font-size:14px;margin-bottom:34px;max-width:26ch}
+  #welcome .btn{width:100%}
+
+  /* back bar */
+  .topbar{position:absolute;top:0;left:0;right:0;height:44px;display:flex;align-items:center;padding:0 14px;z-index:5;background:#fff}
+  .back{font-size:20px;cursor:pointer;width:34px}
+
+  /* home */
+  .greet{margin-bottom:16px}
+  .card{background:#f6f6f7;border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+  .streak-row{display:flex;align-items:center;gap:14px}
+  .streak-num{font-size:30px;font-weight:700}
+  .bars{display:flex;align-items:flex-end;gap:8px;height:70px;margin-top:6px}
+  .bars div{width:16px;background:#c9c9cc;border-radius:3px}
+  .actions{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+  .actions .btn{height:74px;flex-direction:column;gap:4px}
+  .activity-row{display:flex;gap:12px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:10px}
+  .dot-icon{width:28px;height:28px;border-radius:50%;background:#eaeaea;border:1px solid #ccc;flex:none}
+
+  /* log */
+  .type-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:16px 0}
+  .type-card{border:1.5px solid var(--line);border-radius:10px;padding:14px 6px;text-align:center;cursor:pointer;font-size:12px;font-weight:600}
+  .type-card .dot{width:26px;height:26px;border-radius:50%;background:#eee;border:1px solid #bbb;margin:0 auto 8px}
+  .type-card.selected{border-color:var(--ink);background:#1f2023;color:#fff}
+  .type-card.selected .dot{background:#fff;border-color:#fff}
+  .detail-toggle{display:flex;justify-content:space-between;align-items:center;border:1.5px dashed #bbb;border-radius:8px;
+    padding:12px 14px;font-size:13px;color:#555;cursor:pointer;margin-bottom:0}
+  .detail-fields{max-height:0;overflow:hidden;transition:max-height .28s ease}
+  .detail-fields.open{max-height:140px}
+  .detail-fields-inner{display:flex;gap:10px;padding-top:12px}
+  .field{flex:1;border:1px solid var(--line);border-radius:8px;padding:12px;font-size:12px;color:#999}
+  .confirm-wrap{position:absolute;left:20px;right:20px;bottom:24px}
+  .toast{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%) scale(.9);background:#1f2023;color:#fff;
+    padding:14px 22px;border-radius:10px;font-size:14px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .18s ease, transform .18s ease;z-index:20}
+  .toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+
+  /* progress */
+  .toggle{display:flex;border:1px solid var(--line);border-radius:20px;overflow:hidden;width:fit-content;margin-bottom:18px}
+  .toggle span{padding:6px 16px;font-size:12px;font-weight:600;cursor:pointer}
+  .toggle span.on{background:var(--ink);color:#fff}
+  .trend{border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+  .stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .stat{background:#f6f6f7;border-radius:10px;padding:14px 8px;text-align:center}
+  .stat .num{font-size:20px;font-weight:700;display:block}
+  .stat .lbl{font-size:11px;color:var(--muted)}
+
+  /* profile */
+  .avatar{width:64px;height:64px;border-radius:50%;background:#eee;border:1.5px solid #ccc;margin:0 auto 10px}
+  .settings-row{display:flex;justify-content:space-between;padding:14px 0;border-bottom:1px solid #eee;font-size:14px}
+  .banner{background:#f6f6f7;border-radius:8px;padding:12px 14px;font-size:12px;color:#555;margin-bottom:18px;display:flex;justify-content:space-between}
+
+  /* bottom nav */
+  .nav{position:absolute;left:0;right:0;bottom:0;height:64px;background:#fff;border-top:1px solid var(--line);
+    display:none;justify-content:space-around;align-items:center;z-index:10}
+  .nav.show{display:flex}
+  .navitem{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10px;color:var(--muted);cursor:pointer}
+  .navitem .ic{width:20px;height:20px;border-radius:6px;background:#e2e2e2}
+  .navitem.active{color:var(--ink)}
+  .navitem.active .ic{background:var(--ink)}
+</style>
+</head>
+<body>
+
+<p class="hint">This is a genuinely clickable prototype — tap through it like a real app.
+  <button onclick="resetProto()">Reset prototype</button></p>
+
+<div class="phone">
+  <div class="notch"></div>
+
+  <div class="screen active" id="welcome">
+    <div class="screen-inner">
+      <div class="logo-mark"></div>
+      <h1>FitTrack</h1>
+      <p>Log a workout in seconds. See your trend at a glance.</p>
+      <div class="btn btn-primary" onclick="pushScreen('home')" style="width:100%">Get Started</div>
+    </div>
+  </div>
+
+  <div class="screen" id="home">
+    <div class="nav show" id="nav-home">
+      <div class="navitem active" onclick="tabScreen('home')"><div class="ic"></div>Home</div>
+      <div class="navitem" onclick="tabScreen('progress')"><div class="ic"></div>Progress</div>
+      <div class="navitem" onclick="tabScreen('profile')"><div class="ic"></div>Profile</div>
+    </div>
+    <div class="screen-inner" style="padding-bottom:80px">
+      <div class="greet">
+        <h2>Good morning</h2>
+        <p class="muted">Guest · Tuesday</p>
+      </div>
+      <div class="card">
+        <div class="streak-row">
+          <span class="streak-num" id="streakNum">3</span>
+          <div>
+            <p style="font-weight:600;font-size:13px">day streak</p>
+            <p class="muted">Keep it going today</p>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <p style="font-weight:600;font-size:13px;margin-bottom:2px">This week</p>
+        <div class="bars">
+          <div style="height:30%"></div><div style="height:55%"></div><div style="height:40%"></div>
+          <div style="height:70%;background:#1f2023" id="todayBar"></div><div style="height:15%"></div>
+          <div style="height:0%"></div><div style="height:0%"></div>
+        </div>
+      </div>
+      <div class="actions">
+        <div class="btn btn-primary" onclick="pushScreen('log')">+ Log Workout</div>
+        <div class="btn btn-outline" onclick="tabScreen('progress')">View Progress</div>
+      </div>
+      <p class="muted" style="margin-bottom:10px;font-weight:600">Recent</p>
+      <div class="activity-row"><div class="dot-icon"></div><div><p style="font-size:13px">Run · 22 min</p><p class="muted">Yesterday</p></div></div>
+      <div class="activity-row"><div class="dot-icon"></div><div><p style="font-size:13px">Strength · 40 min</p><p class="muted">2 days ago</p></div></div>
+    </div>
+  </div>
+
+  <div class="screen" id="log">
+    <div class="topbar"><span class="back" onclick="popScreen('home')">‹</span><span style="font-weight:600;font-size:14px">Log Workout</span></div>
+    <div class="screen-inner" style="padding-top:56px">
+      <p class="muted" style="font-weight:600;margin-bottom:4px">What did you do?</p>
+      <div class="type-grid">
+        <div class="type-card selected" onclick="pickType(this)"><div class="dot"></div>Run</div>
+        <div class="type-card" onclick="pickType(this)"><div class="dot"></div>Strength</div>
+        <div class="type-card" onclick="pickType(this)"><div class="dot"></div>Other</div>
+      </div>
+      <div class="detail-toggle" onclick="toggleDetail()">
+        <span id="detailLabel">+ Add detail (optional)</span><span id="detailChevron">⌄</span>
+      </div>
+      <div class="detail-fields" id="detailFields">
+        <div class="detail-fields-inner">
+          <div class="field">Duration</div>
+          <div class="field">Notes</div>
+        </div>
+      </div>
+    </div>
+    <div class="confirm-wrap">
+      <div class="btn btn-primary" onclick="confirmLog()">Confirm · Done in 1 tap</div>
+    </div>
+    <div class="toast" id="toast">Logged! 🔥 Streak +1</div>
+  </div>
+
+  <div class="screen" id="progress">
+    <div class="nav show" id="nav-progress">
+      <div class="navitem" onclick="tabScreen('home')"><div class="ic"></div>Home</div>
+      <div class="navitem active" onclick="tabScreen('progress')"><div class="ic"></div>Progress</div>
+      <div class="navitem" onclick="tabScreen('profile')"><div class="ic"></div>Profile</div>
+    </div>
+    <div class="screen-inner" style="padding-bottom:80px">
+      <h2 style="margin-bottom:14px">Progress</h2>
+      <div class="toggle"><span class="on">Week</span><span>Month</span></div>
+      <div class="trend">
+        <p class="muted" style="font-weight:600;margin-bottom:10px">Weekly trend</p>
+        <div class="bars" style="height:90px">
+          <div style="height:35%"></div><div style="height:60%"></div><div style="height:45%"></div>
+          <div style="height:80%;background:#1f2023"></div><div style="height:20%"></div>
+          <div style="height:0%"></div><div style="height:0%"></div>
+        </div>
+      </div>
+      <div class="stat-grid">
+        <div class="stat"><span class="num" id="streakNum2">3</span><span class="lbl">day streak</span></div>
+        <div class="stat"><span class="num">4</span><span class="lbl">this week</span></div>
+        <div class="stat"><span class="num">96</span><span class="lbl">total logs</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen" id="profile">
+    <div class="nav show" id="nav-profile">
+      <div class="navitem" onclick="tabScreen('home')"><div class="ic"></div>Home</div>
+      <div class="navitem" onclick="tabScreen('progress')"><div class="ic"></div>Progress</div>
+      <div class="navitem active" onclick="tabScreen('profile')"><div class="ic"></div>Profile</div>
+    </div>
+    <div class="screen-inner" style="padding-bottom:80px;text-align:center">
+      <div class="avatar"></div>
+      <h3>Guest</h3>
+      <p class="muted" style="margin-bottom:18px">guest@device</p>
+      <div class="banner" style="text-align:left"><span>Browsing as guest</span><span style="font-weight:600;color:#1f2023">Sign up →</span></div>
+      <div style="text-align:left">
+        <div class="settings-row"><span>Account</span><span class="muted">›</span></div>
+        <div class="settings-row"><span>Notifications</span><span class="muted">›</span></div>
+        <div class="settings-row"><span>Units</span><span class="muted">›</span></div>
+        <div class="settings-row"><span>About</span><span class="muted">›</span></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let activeEl = document.getElementById('welcome');
+  let streak = 3;
+
+  function pushScreen(id){
+    const next = document.getElementById(id);
+    next.classList.remove('left');
+    next.style.transition = 'none';
+    next.style.transform = 'translateX(100%)';
+    void next.offsetWidth;
+    next.style.transition = '';
+    next.classList.add('active');
+    activeEl.classList.remove('active');
+    activeEl.classList.add('left');
+    activeEl = next;
+  }
+  function popScreen(id){
+    const next = document.getElementById(id);
+    next.classList.add('left');
+    void next.offsetWidth;
+    next.classList.remove('left');
+    next.classList.add('active');
+    activeEl.classList.remove('active');
+    activeEl.style.transition = '';
+    activeEl.style.transform = 'translateX(100%)';
+    activeEl = next;
+  }
+  function tabScreen(id){
+    if(activeEl.id === id) return;
+    const next = document.getElementById(id);
+    activeEl.style.transition = 'opacity .18s ease';
+    next.style.transition = 'opacity .18s ease';
+    next.style.transform = 'translateX(0)';
+    next.style.opacity = '0';
+    next.classList.add('active');
+    requestAnimationFrame(()=>{ next.style.opacity = '1'; });
+    const prev = activeEl;
+    prev.style.opacity = '0';
+    setTimeout(()=>{
+      prev.classList.remove('active');
+      prev.style.opacity = '';
+      prev.style.transform = 'translateX(100%)';
+      prev.style.transition = '';
+    }, 180);
+    activeEl = next;
+    ['home','progress','profile'].forEach(s=>{
+      document.querySelectorAll('#nav-'+s+' .navitem').forEach((el,i)=>el.classList.remove('active'));
+    });
+    document.querySelectorAll('.navitem').forEach(el=>{
+      if(el.getAttribute('onclick') === "tabScreen('"+id+"')") el.classList.add('active');
+    });
+  }
+  function pickType(el){
+    document.querySelectorAll('.type-card').forEach(c=>c.classList.remove('selected'));
+    el.classList.add('selected');
+  }
+  function toggleDetail(){
+    const f = document.getElementById('detailFields');
+    const open = f.classList.toggle('open');
+    document.getElementById('detailChevron').textContent = open ? '︿' : '⌄';
+    document.getElementById('detailLabel').textContent = open ? 'Hide detail' : '+ Add detail (optional)';
+  }
+  function confirmLog(){
+    streak += 1;
+    document.getElementById('streakNum').textContent = streak;
+    document.getElementById('streakNum2').textContent = streak;
+    const t = document.getElementById('toast');
+    t.classList.add('show');
+    setTimeout(()=>{ t.classList.remove('show'); popScreen('home'); }, 700);
+  }
+  function resetProto(){
+    streak = 3;
+    document.getElementById('streakNum').textContent = streak;
+    document.getElementById('streakNum2').textContent = streak;
+    document.getElementById('detailFields').classList.remove('open');
+    document.getElementById('detailLabel').textContent = '+ Add detail (optional)';
+    document.getElementById('detailChevron').textContent = '⌄';
+    document.querySelectorAll('.screen').forEach(s=>{ s.classList.remove('active','left'); s.style.transform='translateX(100%)'; s.style.opacity=''; s.style.transition=''; });
+    const w = document.getElementById('welcome');
+    w.style.transform = 'translateX(0)';
+    w.classList.add('active');
+    activeEl = w;
+  }
+</script>
+</body>
+</html>
